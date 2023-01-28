@@ -2853,17 +2853,29 @@ void qd_message_Q2_holdoff_disable(qd_message_t *msg)
 
 bool _Q2_holdoff_should_block_LH(const qd_message_content_t *content)
 {
-    const size_t buff_ct = DEQ_SIZE(content->buffers);
-    assert(buff_ct >= content->protected_buffers);
-    return !content->disable_q2_holdoff && (buff_ct - content->protected_buffers) >= QD_QLIMIT_Q2_UPPER;
+    if (content->disable_q2_holdoff) {
+        return false;
+    }
+
+    assert(DEQ_SIZE(content->buffers) >= content->protected_buffers);
+
+    const size_t approx_size = (DEQ_SIZE(content->buffers) - content->protected_buffers) * BUFFER_SIZE;
+
+    return approx_size > QD_QLIMIT_Q2_UPPER_BYTES;
 }
 
 
 bool _Q2_holdoff_should_unblock_LH(const qd_message_content_t *content)
 {
-    const size_t buff_ct = DEQ_SIZE(content->buffers);
-    assert(buff_ct >= content->protected_buffers);
-    return content->disable_q2_holdoff || (buff_ct - content->protected_buffers) < QD_QLIMIT_Q2_LOWER;
+    if (content->disable_q2_holdoff) {
+        return true;
+    }
+
+    assert(DEQ_SIZE(content->buffers) >= content->protected_buffers);
+
+    const size_t approx_size = (DEQ_SIZE(content->buffers) - content->protected_buffers) * BUFFER_SIZE;
+
+    return approx_size < QD_QLIMIT_Q2_LOWER_BYTES;
 }
 
 
@@ -2922,50 +2934,46 @@ int qd_message_stream_data_footer_append(qd_message_t *message, qd_buffer_list_t
 
 int qd_message_stream_data_append(qd_message_t *message, qd_buffer_list_t *data, bool *q2_blocked)
 {
-    unsigned int        length = DEQ_SIZE(*data);
-
-    qd_composed_field_t *field = 0;
-    int rc = 0;
-
     if (q2_blocked)
         *q2_blocked = false;
+
+    qd_buffer_t *buf = DEQ_HEAD(*data);
+    size_t buf_count = 0;
+    size_t buf_limit = 4;
+    qd_buffer_list_t tmp;
+    qd_composed_field_t *field = NULL;
+    DEQ_INIT(tmp);
 
     // DISPATCH-1803: ensure no body data section can exceed the
     // QD_QLIMIT_Q2_LOWER.  This allows the egress router to wait for an entire
     // body data section to arrive and be validated before sending it out to
     // the endpoint without preventing Q2 from being relieved (DISPATCH-2191).
     //
-    const size_t buf_limit = QD_QLIMIT_Q2_LOWER - 2;  // reserve 1 extra for performative header
-    assert(buf_limit);
-    while (length > buf_limit) {
-        qd_buffer_t *buf = DEQ_HEAD(*data);
-        for (int i = 0; i < buf_limit; ++i) {
-            buf = DEQ_NEXT(buf);
+    // Justin: The value of buf_limit has a significant impact on
+    // performance.
+    while (buf) {
+        if (buf_count == buf_limit) {
+            field = qd_compose(QD_PERFORMATIVE_BODY_DATA, field);
+            qd_compose_insert_binary_buffers(field, &tmp);
+
+            buf_count = 0;
+            DEQ_INIT(tmp);
         }
 
-        // split the list at buf.  buf becomes head of trailing list
+        DEQ_REMOVE_HEAD(*data);
+        DEQ_INSERT_TAIL(tmp, buf);
 
-        qd_buffer_list_t trailer = DEQ_EMPTY;
-        DEQ_HEAD(trailer) = buf;
-        DEQ_TAIL(trailer) = DEQ_TAIL(*data);
-        DEQ_TAIL(*data) = DEQ_PREV(buf);
-        DEQ_NEXT(DEQ_TAIL(*data)) = 0;
-        DEQ_PREV(buf) = 0;
-        DEQ_SIZE(trailer) = length - buf_limit;
-        DEQ_SIZE(*data) = buf_limit;
-
-        field = qd_compose(QD_PERFORMATIVE_BODY_DATA, field);
-        qd_compose_insert_binary_buffers(field, data);
-
-        DEQ_MOVE(trailer, *data);
-        length -= buf_limit;
+        buf_count += 1;
+        buf = DEQ_HEAD(*data);
     }
 
     field = qd_compose(QD_PERFORMATIVE_BODY_DATA, field);
-    qd_compose_insert_binary_buffers(field, data);
+    qd_compose_insert_binary_buffers(field, &tmp);
 
-    rc = qd_message_extend(message, field, q2_blocked);
+    int rc = qd_message_extend(message, field, q2_blocked);
+
     qd_compose_free(field);
+
     return rc;
 }
 

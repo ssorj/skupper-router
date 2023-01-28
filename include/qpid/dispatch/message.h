@@ -8,9 +8,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -30,7 +30,7 @@
 #include <proton/raw_connection.h>
 
 /**@file
- * Message representation. 
+ * Message representation.
  *
  * @defgroup message message
  *
@@ -41,22 +41,24 @@
 // DISPATCH-807 Queue depth limits
 // upper and lower limits for bang bang hysteresis control
 //
+// XXX Rewrite this
+//
 // Q2 defines the maximum number of buffers allowed in a message's buffer
 // chain.  This limits the number of bytes that will be read from an incoming
 // link (pn_link_recv) for the current message. Once Q2 is enabled no further
 // pn_link_recv calls will be done on the link. Q2 remains in effect until enough
 // bytes have been consumed by the outgoing link(s) to drop the number of
 // buffered bytes below the lower threshold.
-#define QD_QLIMIT_Q2_UPPER 256   // disable pn_link_recv (qd_buffer_t's)
-#define QD_QLIMIT_Q2_LOWER 128   // re-enable pn_link_recv
-//
+#define QD_QLIMIT_Q2_LOWER_BYTES (16 * BUFFER_SIZE) // Disable pn_link_recv
+#define QD_QLIMIT_Q2_UPPER_BYTES (32 * BUFFER_SIZE) // Re-enable pn_link_recv
+
 // Q3 limits the number of bytes allowed to be buffered in a session's outgoing
 // buffer.  Once the Q3 upper limit is hit (read via pn_session_outgoing_bytes),
 // pn_link_send will no longer be called for ALL outgoing links sharing the
 // session.  When enough outgoing bytes have been drained below the lower limit
 // pn_link_sends will resume.
-#define QD_QLIMIT_Q3_UPPER  (QD_QLIMIT_Q3_LOWER * 2)  // in pn_buffer_t's
-#define QD_QLIMIT_Q3_LOWER  (QD_QLIMIT_Q2_UPPER * 2)  // 2 == a guess
+#define QD_QLIMIT_Q3_LOWER (16)
+#define QD_QLIMIT_Q3_UPPER (QD_QLIMIT_Q3_LOWER * 2) // in pn_buffer_t's
 
 // Callback for status change (confirmed persistent, loaded-in-memory, etc.)
 
@@ -599,7 +601,7 @@ uint8_t qd_message_get_priority(qd_message_t *msg);
 /**
  * True if message is larger that maxMessageSize
  * @param msg A pointer to the message
- * @return 
+ * @return
  */
 bool qd_message_oversize(const qd_message_t *msg);
 
