@@ -41,8 +41,6 @@
 // DISPATCH-807 Queue depth limits
 // upper and lower limits for bang bang hysteresis control
 //
-// XXX Rewrite this
-//
 // Q2 defines the maximum number of buffers allowed in a message's buffer
 // chain.  This limits the number of bytes that will be read from an incoming
 // link (pn_link_recv) for the current message. Once Q2 is enabled no further
@@ -57,7 +55,7 @@
 // pn_link_send will no longer be called for ALL outgoing links sharing the
 // session.  When enough outgoing bytes have been drained below the lower limit
 // pn_link_sends will resume.
-#define QD_QLIMIT_Q3_LOWER QD_QLIMIT_Q2_UPPER // in pn_buffer_t's
+#define QD_QLIMIT_Q3_LOWER (QD_QLIMIT_Q2_UPPER * 2) // in pn_buffer_t's
 #define QD_QLIMIT_Q3_UPPER (QD_QLIMIT_Q3_LOWER * 2)
 
 // Callback for status change (confirmed persistent, loaded-in-memory, etc.)
