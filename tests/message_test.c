@@ -29,9 +29,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#define Q2_LOWER_BUF_COUNT (QD_QLIMIT_Q2_LOWER_BYTES / BUFFER_SIZE)
-#define Q2_UPPER_BUF_COUNT (QD_QLIMIT_Q2_UPPER_BYTES / BUFFER_SIZE)
-
 #define FLAT_BUF_SIZE (100000)
 static unsigned char buffer[FLAT_BUF_SIZE];
 
@@ -613,19 +610,19 @@ exit:
 
 static char* test_q2_input_holdoff_sensing(void *context)
 {
-    if (QD_QLIMIT_Q2_LOWER_BYTES > QD_QLIMIT_Q2_UPPER_BYTES)
-        return "QD_LIMIT_Q2 lower limit is bigger than upper limit";
+    if (QD_QLIMIT_Q2_LOWER >= QD_QLIMIT_Q2_UPPER)
+        return "Q2 lower limit is bigger than upper limit";
 
-    for (int nbufs = 1; nbufs < Q2_UPPER_BUF_COUNT + 1; nbufs++) {
+    for (int nbufs = 1; nbufs < QD_QLIMIT_Q2_UPPER + 1; nbufs++) {
         qd_message_t         *msg     = qd_message();
         qd_message_content_t *content = MSG_CONTENT(msg);
 
         set_content_bufs(content, nbufs);
-        if (_Q2_holdoff_should_block_LH(content) != (nbufs * BUFFER_SIZE > QD_QLIMIT_Q2_UPPER_BYTES)) {
+        if (_Q2_holdoff_should_block_LH(content) != (nbufs > QD_QLIMIT_Q2_UPPER)) {
             qd_message_free(msg);
             return "qd_message_holdoff_would_block was miscalculated";
         }
-        if (_Q2_holdoff_should_unblock_LH(content) != (nbufs * BUFFER_SIZE < QD_QLIMIT_Q2_LOWER_BYTES)) {
+        if (_Q2_holdoff_should_unblock_LH(content) != (nbufs < QD_QLIMIT_Q2_LOWER)) {
             qd_message_free(msg);
             return "qd_message_holdoff_would_unblock was miscalculated";
         }
@@ -1097,7 +1094,7 @@ static char *test_check_stream_data_append(void * context)
     int unblock_called = 0;
 
     // generate a buffer list of binary data large enough to trigger Q2
-    const int body_bufct = (Q2_UPPER_BUF_COUNT * 3) + 5;
+    const int body_bufct = (QD_QLIMIT_Q2_UPPER * 3) + 5;
     qd_buffer_list_t bin_data = DEQ_EMPTY;
     for (int i = 0; i < body_bufct; ++i) {
         qd_buffer_t *buffy = qd_buffer();
@@ -1189,7 +1186,7 @@ static char *test_check_stream_data_append(void * context)
             // smaller lists that are no bigger than QD_QLIMIT_Q2_LOWER buffers
             // long
             body_buffers += qd_message_stream_data_buffer_count(stream_data);
-            if (qd_message_stream_data_buffer_count(stream_data) >= Q2_LOWER_BUF_COUNT) {
+            if (qd_message_stream_data_buffer_count(stream_data) >= QD_QLIMIT_Q2_LOWER) {
                 result = "Body data list length too long!";
                 goto exit;
             }
@@ -1415,7 +1412,7 @@ static char *test_check_stream_data_footer(void *context)
     // The message is not small enough with low buffer sizes
     if (BUFFER_SIZE >= 5) {
         // this small message should not have triggered Q2
-        assert(DEQ_SIZE(MSG_CONTENT(in_msg)->buffers) < Q2_UPPER_BUF_COUNT);
+        assert(DEQ_SIZE(MSG_CONTENT(in_msg)->buffers) < QD_QLIMIT_Q2_UPPER);
         if (q2_blocked) {
             result = "Unexpected Q2 block on message extend";
             goto exit;
@@ -1762,26 +1759,21 @@ static char *test_q2_ignore_headers(void *context)
         DEQ_INSERT_TAIL(content->buffers, buffy);
     }
 
-    size_t approx_size = (DEQ_SIZE(content->buffers) - header_ct) * BUFFER_SIZE;
-
     // expect: Q2 blocking activates when the approximate size in bytes exceeds QD_QLIMIT_Q2_UPPER_BYTES
-    if (approx_size < QD_QLIMIT_Q2_UPPER_BYTES) {
+    if (DEQ_SIZE(content->buffers) - header_ct < QD_QLIMIT_Q2_UPPER) {
         result = "Wrong buffer length for Q2 activate!";
         goto exit;
     }
 
-    // now remove buffers until Q2 is relieved
-
+    // Now remove buffers until Q2 is relieved
     while (!_Q2_holdoff_should_unblock_LH(content)) {
         qd_buffer_t *buffy = DEQ_TAIL(content->buffers);
         DEQ_REMOVE_TAIL(content->buffers);
         qd_buffer_free(buffy);
     }
 
-    approx_size = (DEQ_SIZE(content->buffers) - header_ct) * BUFFER_SIZE;
-
     // expect: Q2 deactivates when the approximate size in bytes falls below QD_QLIMIT_Q2_LOWER_BYTES
-    if (approx_size > QD_QLIMIT_Q2_LOWER_BYTES) {
+    if (DEQ_SIZE(content->buffers) - header_ct > QD_QLIMIT_Q2_LOWER) {
         result = "Wrong buffer length for Q2 deactivate!";
         goto exit;
     }

@@ -2851,34 +2851,6 @@ void qd_message_Q2_holdoff_disable(qd_message_t *msg)
 }
 
 
-bool _Q2_holdoff_should_block_LH(const qd_message_content_t *content)
-{
-    if (content->disable_q2_holdoff) {
-        return false;
-    }
-
-    assert(DEQ_SIZE(content->buffers) >= content->protected_buffers);
-
-    const size_t approx_size = (DEQ_SIZE(content->buffers) - content->protected_buffers) * BUFFER_SIZE;
-
-    return approx_size > QD_QLIMIT_Q2_UPPER_BYTES;
-}
-
-
-bool _Q2_holdoff_should_unblock_LH(const qd_message_content_t *content)
-{
-    if (content->disable_q2_holdoff) {
-        return true;
-    }
-
-    assert(DEQ_SIZE(content->buffers) >= content->protected_buffers);
-
-    const size_t approx_size = (DEQ_SIZE(content->buffers) - content->protected_buffers) * BUFFER_SIZE;
-
-    return approx_size < QD_QLIMIT_Q2_LOWER_BYTES;
-}
-
-
 bool qd_message_is_Q2_blocked(const qd_message_t *msg)
 {
     qd_message_pvt_t     *msg_pvt = (qd_message_pvt_t*) msg;
@@ -2939,7 +2911,7 @@ int qd_message_stream_data_append(qd_message_t *message, qd_buffer_list_t *data,
 
     qd_buffer_t *buf = DEQ_HEAD(*data);
     size_t buf_count = 0;
-    size_t buf_limit = 4;
+    const size_t buf_limit = 4;
     qd_buffer_list_t tmp;
     qd_composed_field_t *field = NULL;
     DEQ_INIT(tmp);

@@ -49,16 +49,16 @@
 // pn_link_recv calls will be done on the link. Q2 remains in effect until enough
 // bytes have been consumed by the outgoing link(s) to drop the number of
 // buffered bytes below the lower threshold.
-#define QD_QLIMIT_Q2_LOWER_BYTES (16 * BUFFER_SIZE) // Disable pn_link_recv
-#define QD_QLIMIT_Q2_UPPER_BYTES (32 * BUFFER_SIZE) // Re-enable pn_link_recv
+#define QD_QLIMIT_Q2_LOWER 32                       // Re-enable pn_link_recv
+#define QD_QLIMIT_Q2_UPPER (QD_QLIMIT_Q2_LOWER * 2) // Disable pn_link_recv
 
 // Q3 limits the number of bytes allowed to be buffered in a session's outgoing
 // buffer.  Once the Q3 upper limit is hit (read via pn_session_outgoing_bytes),
 // pn_link_send will no longer be called for ALL outgoing links sharing the
 // session.  When enough outgoing bytes have been drained below the lower limit
 // pn_link_sends will resume.
-#define QD_QLIMIT_Q3_LOWER (16)
-#define QD_QLIMIT_Q3_UPPER (QD_QLIMIT_Q3_LOWER * 2) // in pn_buffer_t's
+#define QD_QLIMIT_Q3_LOWER QD_QLIMIT_Q2_UPPER // in pn_buffer_t's
+#define QD_QLIMIT_Q3_UPPER (QD_QLIMIT_Q3_LOWER * 2)
 
 // Callback for status change (confirmed persistent, loaded-in-memory, etc.)
 
