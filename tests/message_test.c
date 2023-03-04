@@ -611,14 +611,14 @@ exit:
 static char* test_q2_input_holdoff_sensing(void *context)
 {
     if (QD_QLIMIT_Q2_LOWER >= QD_QLIMIT_Q2_UPPER)
-        return "Q2 lower limit is bigger than upper limit";
+        return "QD_LIMIT_Q2 lower limit is bigger than upper limit";
 
-    for (int nbufs = 1; nbufs < QD_QLIMIT_Q2_UPPER + 1; nbufs++) {
+    for (int nbufs=1; nbufs<QD_QLIMIT_Q2_UPPER + 1; nbufs++) {
         qd_message_t         *msg     = qd_message();
         qd_message_content_t *content = MSG_CONTENT(msg);
 
         set_content_bufs(content, nbufs);
-        if (_Q2_holdoff_should_block_LH(content) != (nbufs > QD_QLIMIT_Q2_UPPER)) {
+        if (_Q2_holdoff_should_block_LH(content) != (nbufs >= QD_QLIMIT_Q2_UPPER)) {
             qd_message_free(msg);
             return "qd_message_holdoff_would_block was miscalculated";
         }
@@ -1094,6 +1094,7 @@ static char *test_check_stream_data_append(void * context)
     int unblock_called = 0;
 
     // generate a buffer list of binary data large enough to trigger Q2
+    //
     const int body_bufct = (QD_QLIMIT_Q2_UPPER * 3) + 5;
     qd_buffer_list_t bin_data = DEQ_EMPTY;
     for (int i = 0; i < body_bufct; ++i) {
@@ -1759,20 +1760,21 @@ static char *test_q2_ignore_headers(void *context)
         DEQ_INSERT_TAIL(content->buffers, buffy);
     }
 
-    // expect: Q2 blocking activates when the approximate size in bytes exceeds QD_QLIMIT_Q2_UPPER_BYTES
+    // expect: Q2 blocking activates when the non-header buffer count exceeds QD_QLIMIT_Q2_UPPER
     if (DEQ_SIZE(content->buffers) - header_ct < QD_QLIMIT_Q2_UPPER) {
         result = "Wrong buffer length for Q2 activate!";
         goto exit;
     }
 
-    // Now remove buffers until Q2 is relieved
+    // now remove buffers until Q2 is relieved
+
     while (!_Q2_holdoff_should_unblock_LH(content)) {
         qd_buffer_t *buffy = DEQ_TAIL(content->buffers);
         DEQ_REMOVE_TAIL(content->buffers);
         qd_buffer_free(buffy);
     }
 
-    // expect: Q2 deactivates when the approximate size in bytes falls below QD_QLIMIT_Q2_LOWER_BYTES
+    // expect: Q2 deactivates when the non-header buffer count falls below QD_QLIMIT_Q2_LOWER
     if (DEQ_SIZE(content->buffers) - header_ct > QD_QLIMIT_Q2_LOWER) {
         result = "Wrong buffer length for Q2 deactivate!";
         goto exit;

@@ -2851,6 +2851,32 @@ void qd_message_Q2_holdoff_disable(qd_message_t *msg)
 }
 
 
+bool _Q2_holdoff_should_block_LH(const qd_message_content_t *content)
+{
+    if (content->disable_q2_holdoff) {
+        return false;
+    }
+
+    assert(DEQ_SIZE(content->buffers) >= content->protected_buffers);
+
+    return DEQ_SIZE(content->buffers) - content->protected_buffers > QD_QLIMIT_Q2_UPPER;
+}
+
+
+bool _Q2_holdoff_should_unblock_LH(const qd_message_content_t *content)
+{
+    // XXX Should this be an assert instead?
+    // assert(!content->disable_q2_holdoff);
+    if (content->disable_q2_holdoff) {
+        return true;
+    }
+
+    assert(DEQ_SIZE(content->buffers) >= content->protected_buffers);
+
+    return DEQ_SIZE(content->buffers) - content->protected_buffers < QD_QLIMIT_Q2_LOWER;
+}
+
+
 bool qd_message_is_Q2_blocked(const qd_message_t *msg)
 {
     qd_message_pvt_t     *msg_pvt = (qd_message_pvt_t*) msg;

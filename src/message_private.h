@@ -185,30 +185,10 @@ void qd_message_initialize(void);
 //
 // Internal API - exported for unit testing ONLY:
 //
+
 // These expect content->lock to be locked.
-static inline bool _Q2_holdoff_should_block_LH(const qd_message_content_t *content)
-{
-    if (content->disable_q2_holdoff) {
-        return false;
-    }
-
-    assert(DEQ_SIZE(content->buffers) >= content->protected_buffers);
-
-    return DEQ_SIZE(content->buffers) - content->protected_buffers > QD_QLIMIT_Q2_UPPER;
-}
-
-
-static inline bool _Q2_holdoff_should_unblock_LH(const qd_message_content_t *content)
-{
-    // XXX Should this be an assert instead?
-    if (content->disable_q2_holdoff) {
-        return true;
-    }
-
-    assert(DEQ_SIZE(content->buffers) >= content->protected_buffers);
-
-    return DEQ_SIZE(content->buffers) - content->protected_buffers < QD_QLIMIT_Q2_LOWER;
-}
+bool _Q2_holdoff_should_block_LH(const qd_message_content_t *content);
+bool _Q2_holdoff_should_unblock_LH(const qd_message_content_t *content);
 
 uint32_t _compose_router_annotations(qd_message_pvt_t *msg, unsigned int ra_flags, qd_buffer_list_t *ra_buffers);
 
