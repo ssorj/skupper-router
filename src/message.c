@@ -2859,7 +2859,7 @@ bool _Q2_holdoff_should_block_LH(const qd_message_content_t *content)
 
     assert(DEQ_SIZE(content->buffers) >= content->protected_buffers);
 
-    return DEQ_SIZE(content->buffers) - content->protected_buffers > QD_QLIMIT_Q2_UPPER;
+    return DEQ_SIZE(content->buffers) - content->protected_buffers >= QD_QLIMIT_Q2_UPPER;
 }
 
 
