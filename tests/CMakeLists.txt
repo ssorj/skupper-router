@@ -196,10 +196,10 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/pytest.ini ${CMAKE_CURRENT_BINARY_DIR
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/mypy.ini.in ${CMAKE_CURRENT_BINARY_DIR}/mypy.ini)
 
 find_program (BASH_PROGRAM bash)
-add_test (NAME python-checker
+add_test (NAME python-checker 
           WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
           COMMAND ${BASH_PROGRAM} ${CMAKE_CURRENT_BINARY_DIR}/python-checker.sh)
-
+          
 # Additional files to install for running system tests.
 # NOTE: Don't install run.py. A system test of a dispatch installation should pick everything
 # up from standard install locations.
