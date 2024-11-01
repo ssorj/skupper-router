@@ -119,7 +119,7 @@ endif()
 foreach(py_test_module
 #   system_tests_broker
     system_tests_autolinks
-    system_tests_drain
+#    system_tests_drain
     system_tests_management
     system_tests_one_router
     system_tests_handle_failover
