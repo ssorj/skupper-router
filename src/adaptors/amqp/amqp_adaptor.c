@@ -1243,7 +1243,6 @@ static int AMQP_link_flow_handler(qd_router_t *router, qd_link_t *link)
 
 static int AMQP_link_work_handler(qd_router_t *router, qd_link_t *link)
 {
-    fprintf(stderr, "XXX - AMQP_link_work_handler\n");
     return 0; // XXX
 }
 
